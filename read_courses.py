@@ -11,7 +11,7 @@ user_name, user_pw = None, None
 while user_name is None or user_pw is None:
     user_name = raw_input('User: ')
     user_pw = raw_input('Password: ')
-print 'Assuming your credentials are correct, here we go.'
+print 'Assuming your credentials are correct. Firing up chrome...'
 time.sleep(0.3)
 dir_path = os.getcwd()
 driver = webdriver.Chrome(dir_path + '/chromedriver')
@@ -43,13 +43,13 @@ final_download_list = []
 final_downloads = open('final_downloads.txt','w')
 
 html = driver.page_source
-soup = BeautifulSoup(html,"html.parser")
+soup = BeautifulSoup(html,'html.parser')
 # print soup.findAll('a', href=re.compile('^/main.aspx?CourseID='))
 course_list=[]
 for link in soup.find_all('a', href=True):
     if 'CourseID' in link['href']:
         course_list.append(link['href'].split('=')[1].encode('utf-8'))
-print 'found',len(course_list),'courses'
+print 'Found',len(course_list),'courses'
 print course_list
 # access each course through selenium
 def check_words(root,wordlist):
@@ -64,32 +64,32 @@ for course in course_list:
     # locate the assignments
     _title = driver.find_element_by_class_name('treemenu-title')
     time.sleep(1)
-    print 'Entering new course',base_url+course
-    soup = BeautifulSoup(driver.page_source, "html.parser")
+    print 'Exploring new course:',_title.text
+    soup = BeautifulSoup(driver.page_source, 'html.parser')
     for link in soup.find_all('a', href=True):
         if 'processfolder' in link['href']:
-            # check if this folder has the name "oving" or "assignment"
-            f = link.text.lower()
-            print f
-            if check_words(f,['seminar','øvinger'.decode('utf-8'),'exercise','oppgaver','prosjekt','project']):
-                print 'entering folder...',f
+            # check if this folder has the name 'oving' or 'assignment'
+            assignment_name = link.text.lower()
+            # print assignment_name
+            if check_words(assignment_name,['seminar','øvinger'.decode('utf-8'),'exercise','oppgaver','prosjekt','project']):
+                # print 'Entering folder...',assignment_name
                 # open folder and check sub-trees
-                f_link = link['href']
-                driver.get(f_link)
-                print 'Accessing assignment folder',f_link
-                subsoup = BeautifulSoup(driver.page_source,"html.parser")
-                for subfile in subsoup.find_all('a', class_="GridTitle"):
-                    # print subfile
-                    print subfile.text
+                assignment_link = link['href']
+                driver.get(assignment_link)
+                print 'Accessing assignment folder',assignment_link
+                subsoup = BeautifulSoup(driver.page_source,'html.parser')
+                for subfile in subsoup.find_all('a', class_='GridTitle'):
+                    # print subfile.text
                     driver.get(its_base+subfile['href'])
-                    file_soup = BeautifulSoup(driver.page_source, "html.parser")
-                    delivered = file_soup.find_all('div', class_="ccl-filelist")
+                    file_soup = BeautifulSoup(driver.page_source, 'html.parser')
+                    delivered = file_soup.find_all('div', class_='ccl-filelist')
                     # iterate delivered files and find their links
                     for x in delivered:
                         for deliver_link in x.find_all('a',href=True):
                             if 'DownloadRedirect' in deliver_link['href']:
                                 # download this file
                                 driver.get(deliver_link['href'])
+                                print 'Downloading',deliver_link.text
 
     time.sleep(1)
 for x in final_download_list:

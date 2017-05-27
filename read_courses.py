@@ -1,17 +1,12 @@
+# -*- coding: latin-1 -*-
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
-
 from bs4 import BeautifulSoup
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
+import os,sys,time
 
-import os
-import requests
-import time
 print 'Hi there. Plz trust me and enter your Feide credentials.'
-time.sleep(1)
-# user_name, user_pw = "tollefej","Tollef1337"
+time.sleep(0.5)
 user_name, user_pw = None, None
 while user_name is None or user_pw is None:
     user_name = raw_input('User: ')
@@ -38,18 +33,65 @@ courses_url = 'https://ntnu.itslearning.com/Course/AllCourses.aspx'
 driver.get(courses_url)
 all_courses = Select(driver.find_element_by_tag_name('select'))
 # list all courses by the student
-all_courses.select_by_value('All')
+all_courses.select_by_value('Active')
 
+x = driver.find_elements_by_partial_link_text('/main.aspx?CourseID')
+for i in x:
+    print i.text
 
+final_download_list = []
+final_downloads = open('final_downloads.txt','w')
 
-# outx = open('source.html','w')
-# print driver.page_source
-# for i in driver.page_source:
-#     outx.write(i.encode('utf-8'))
-# outx.close()
+html = driver.page_source
+soup = BeautifulSoup(html,"html.parser")
+# print soup.findAll('a', href=re.compile('^/main.aspx?CourseID='))
+course_list=[]
+for link in soup.find_all('a', href=True):
+    if 'CourseID' in link['href']:
+        course_list.append(link['href'].split('=')[1].encode('utf-8'))
+print 'found',len(course_list),'courses'
+print course_list
+# access each course through selenium
+def check_words(root,wordlist):
+    for w in wordlist:
+        if w in root:
+            return True
+    return False
+its_base = 'https://ntnu.itslearning.com/'
+base_url = its_base + 'main.aspx?CourseID='
+for course in course_list:
+    driver.get(base_url + course)
+    # locate the assignments
+    _title = driver.find_element_by_class_name('treemenu-title')
+    time.sleep(1)
+    print 'Entering new course',base_url+course
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+    for link in soup.find_all('a', href=True):
+        if 'processfolder' in link['href']:
+            # check if this folder has the name "oving" or "assignment"
+            f = link.text.lower()
+            print f
+            if check_words(f,['seminar','øvinger'.decode('utf-8'),'exercise','oppgaver','prosjekt','project']):
+                print 'entering folder...',f
+                # open folder and check sub-trees
+                f_link = link['href']
+                driver.get(f_link)
+                print 'Accessing assignment folder',f_link
+                subsoup = BeautifulSoup(driver.page_source,"html.parser")
+                for subfile in subsoup.find_all('a', class_="GridTitle"):
+                    # print subfile
+                    print subfile.text
+                    driver.get(its_base+subfile['href'])
+                    file_soup = BeautifulSoup(driver.page_source, "html.parser")
+                    delivered = file_soup.find_all('div', class_="ccl-filelist")
+                    # iterate delivered files and find their links
+                    for x in delivered:
+                        for deliver_link in x.find_all('a',href=True):
+                            if 'DownloadRedirect' in deliver_link['href']:
+                                # download this file
+                                driver.get(deliver_link['href'])
 
-
-# html = driver.page_source
-# soup = BeautifulSoup(html,"html.parser")
-# for tag in soup.find_all('iconcolumn'):
-#     print tag.text
+    time.sleep(1)
+for x in final_download_list:
+    print x
+final_downloads.close()

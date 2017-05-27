@@ -33,7 +33,7 @@ courses_url = 'https://ntnu.itslearning.com/Course/AllCourses.aspx'
 driver.get(courses_url)
 all_courses = Select(driver.find_element_by_tag_name('select'))
 # list all courses by the student
-all_courses.select_by_value('Active')
+all_courses.select_by_value('All')
 
 x = driver.find_elements_by_partial_link_text('/main.aspx?CourseID')
 for i in x:

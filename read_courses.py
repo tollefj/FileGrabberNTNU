@@ -1,17 +1,55 @@
-# -*- coding: latin-1 -*-
+# -*- coding: utf-8 -*-
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 from bs4 import BeautifulSoup
 import os,sys,time
+from Tkinter import *
+
+class takeInput(object):
+    def __init__(self,username,pw):
+        self.root = Tk()
+        self.root.wm_title('Feide data')
+        self.user = ''
+        self.password = ''
+        self.frame = Frame(self.root)
+        self.frame.pack()
+        self.acceptInput(username,pw)
+    def acceptInput(self,username,pw):
+        r = self.frame
+        k = Label(r,text='User/Password')
+        k.pack(side='left')
+        k2 = Label(r,text='')
+        k2.pack(side='left')
+        self.e = Entry(r,text='')
+        self.e.pack(side='left')
+        self.e.focus_set()
+        self.e2 = Entry(r,text='')
+        self.e2.pack(side='left')
+        b = Button(r,text='Confirm',command=self.gettext)
+        b.pack(side='right')
+    def gettext(self):
+        self.user = self.e.get()
+        self.password = self.e2.get()
+        self.root.destroy()
+    def getString(self):
+        return self.user,self.password
+    def waitForInput(self):
+        self.root.mainloop()
+def getText(username,password):
+    msgBox = takeInput(username,password)
+    #loop until the user makes a decision and the window is destroyed
+    msgBox.waitForInput()
+    return msgBox.getString()
+
+
 
 print 'Hi there. Plz trust me and enter your Feide credentials.'
 time.sleep(0.5)
-user_name, user_pw = None, None
-while user_name is None or user_pw is None:
-    user_name = raw_input('User: ')
-    user_pw = raw_input('Password: ')
+user_name, user_pw = getText('User','Password')
+
 print 'Assuming your credentials are correct. Firing up chrome...'
+print '(All your files will be stored in your default download folder)'
 time.sleep(0.3)
 dir_path = os.getcwd()
 driver = webdriver.Chrome(dir_path + '/chromedriver')
@@ -36,12 +74,6 @@ all_courses = Select(driver.find_element_by_tag_name('select'))
 all_courses.select_by_value('All')
 
 x = driver.find_elements_by_partial_link_text('/main.aspx?CourseID')
-for i in x:
-    print i.text
-
-final_download_list = []
-final_downloads = open('final_downloads.txt','w')
-
 html = driver.page_source
 soup = BeautifulSoup(html,'html.parser')
 # print soup.findAll('a', href=re.compile('^/main.aspx?CourseID='))
@@ -49,8 +81,7 @@ course_list=[]
 for link in soup.find_all('a', href=True):
     if 'CourseID' in link['href']:
         course_list.append(link['href'].split('=')[1].encode('utf-8'))
-print 'Found',len(course_list),'courses'
-print course_list
+
 # access each course through selenium
 def check_words(root,wordlist):
     for w in wordlist:
@@ -62,9 +93,8 @@ base_url = its_base + 'main.aspx?CourseID='
 for course in course_list:
     driver.get(base_url + course)
     # locate the assignments
-    _title = driver.find_element_by_class_name('treemenu-title')
     time.sleep(1)
-    print 'Exploring new course:',_title.text
+    print 'Exploring new course'
     soup = BeautifulSoup(driver.page_source, 'html.parser')
     for link in soup.find_all('a', href=True):
         if 'processfolder' in link['href']:
@@ -89,7 +119,7 @@ for course in course_list:
                             if 'DownloadRedirect' in deliver_link['href']:
                                 # download this file
                                 driver.get(deliver_link['href'])
-                                print 'Downloading',deliver_link.text
+                                print 'Downloading file'
 
     time.sleep(1)
 for x in final_download_list:

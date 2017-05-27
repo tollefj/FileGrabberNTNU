@@ -34,14 +34,6 @@ driver.get(courses_url)
 all_courses = Select(driver.find_element_by_tag_name('select'))
 # list all courses by the student
 all_courses.select_by_value('All')
-
-x = driver.find_elements_by_partial_link_text('/main.aspx?CourseID')
-for i in x:
-    print i.text
-
-final_download_list = []
-final_downloads = open('final_downloads.txt','w')
-
 html = driver.page_source
 soup = BeautifulSoup(html,'html.parser')
 # print soup.findAll('a', href=re.compile('^/main.aspx?CourseID='))
@@ -92,6 +84,3 @@ for course in course_list:
                                 print 'Downloading',deliver_link.text
 
     time.sleep(1)
-for x in final_download_list:
-    print x
-final_downloads.close()

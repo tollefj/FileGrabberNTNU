@@ -5,7 +5,6 @@ def install(package):
 if __name__ == '__main__':
     install('BeautifulSoup4')
     install('selenium')
-    continue
 
 # -*- coding: utf-8 -*-
 from selenium import webdriver
@@ -110,7 +109,7 @@ for course in course_list:
             # check if this folder has the name 'oving' or 'assignment'
             assignment_name = link.text.lower()
             # print assignment_name
-            if check_words(assignment_name,['seminar','øvinger'.decode('utf-8'),'exercise','oppgaver','prosjekt','project']):
+            if check_words(assignment_name,['seminar','vinger','exercise','oppgaver','prosjekt','project']):
                 # print 'Entering folder...',assignment_name
                 # open folder and check sub-trees
                 assignment_link = link['href']

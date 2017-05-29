@@ -1,3 +1,12 @@
+# init
+import pip
+def install(package):
+    pip.main(['install', package])
+if __name__ == '__main__':
+    install('BeautifulSoup4')
+    install('selenium')
+    continue
+
 # -*- coding: utf-8 -*-
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys

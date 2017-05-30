@@ -5,11 +5,6 @@ class MainWindow(Tk):
     def __init__(self):
         self.main = Tk()
         self.main.title("Filegrabber NTNU")
-        screen_w, screen_h = self.main.winfo_screenwidth(),self.main.winfo_screenheight()
-        #self.main.geometry("+50+150")
-        x = (screen_w/2) - 150
-        y = (screen_h/2) - 150
-        #self.main.geometry('%dx%d+%d+%d' % (None,None,x,y))
         self.frame = Frame(self.main, padding=(5,3,5,12))
         self.frame.grid(column=0,row=0,sticky=(N,S,E,W))
         self.user = None

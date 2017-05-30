@@ -4,6 +4,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 from bs4 import BeautifulSoup
 import os,sys,time,platform
+import warnings  # supressing warnings from BeautifulSoup
+warnings.filterwarnings("ignore")
 
 chrome_driver = '/chromedriver'
 def check_OS():
@@ -14,7 +16,7 @@ def check_OS():
 
 
 def main():
-    print 'Hi there. Plz trust me and enter your Feide credentials.'
+    print 'Enter your Feide credentials.'
     time.sleep(0.5)
     user_name, user_pw = None, None
     while user_name is None or user_pw is None:

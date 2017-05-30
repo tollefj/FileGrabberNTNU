@@ -10,9 +10,9 @@ warnings.filterwarnings("ignore")
 def main():
     chrome_driver = '/chromedriver'
     _os = platform.system()
-    if _os.lower() == 'Windows':
+    if _os.lower() == 'windows':
         chrome_driver += '.exe'
-    elif _os.lower() == 'Linux':
+    elif _os.lower() == 'linux':
         chrome_driver += 'Linux'
     print _os+' detected. Chromedriver path: '+chrome_driver+'\n'
     print 'Enter your Feide credentials.'
@@ -87,3 +87,4 @@ def main():
                                     print 'Downloading file'
 
         time.sleep(1)
+main()

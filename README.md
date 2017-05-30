@@ -8,7 +8,8 @@ python setup.py --no-user-cfg install --no-compile
 ```
 2) Watch as your downloads folder gets clogged up
 
+####Note:
 You might need to install lxml (http parser) on Windows.
 ```shell
-pip install lxml
+python -m pip install lxml
 ```

@@ -3,11 +3,16 @@
 ## Running locally (Python 2.7)
 ### I cannot guarantee that *only* your submitted files will be downloaded. Some wrongly tagged assignment-related files might be added. Blame the system!
 1) Download the project
-2) Run the following to test for installed packages.
+2) Install packages
 ```shell
-python setup.py --no-user-cfg install --no-compile
+pip install --user selenium
+pip install --user BeautifulSoup4
 ```
-3) Watch as your downloads folder gets clogged up
+3) Run the program
+```shell
+python grabber.py
+```
+4) Watch as your downloads folder gets clogged up
 
 Note:
 You might need to install lxml (http parser) on Windows.

@@ -5,25 +5,29 @@ from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 from bs4 import BeautifulSoup
-import os,sys,time,platform
+import os,sys,time,platform,shutil
 import codecs
 import warnings  # supressing warnings from BeautifulSoup
 warnings.filterwarnings("ignore")
 
 class MainWindow(Tk):
     def __init__(self):
-        self.main = Tk()
+        Tk.__init__(self)
+        self.main = self
         self.main.title("Filegrabber NTNU")
         self.frame = Frame(self.main, padding=(5,3,5,12))
         self.frame.grid(column=0,row=0,sticky=(N,S,E,W))
 
+        self.user_label = None
+        self.pw_label = None
         self.user = None
         self.pw = None
         self.confirm = None
         self.register_user = None
         self.register_pw = None
-        self.ignored_courses = []
+        self.user_data = [self.user_label,self.user,self.pw_label,self.pw]
         self.listbox = None
+        self.course_label = None
 
         self.btn_a = None
         self.btn_l = None
@@ -40,7 +44,7 @@ class MainWindow(Tk):
         self.start = None # the button to start the program
         self.chrome_driver = os.path.join('/driver','chromedriver')
         self.logged_in = False
-        self.dir_path = os.getcwd()
+        self.dir_path = os.getcwd() # used to obtain the chromedriver
         self.ntnu_itslearning_url = 'https://idp.feide.no/simplesaml/module.php/feide/login.php?asLen=252&AuthState=_9118f881ab74e45cbc23c0cb702b667ae2d11c4019%3Ahttps%3A%2F%2Fidp.feide.no%2Fsimplesaml%2Fsaml2%2Fidp%2FSSOService.php%3Fspentityid%3Durn%253Amace%253Afeide.no%253Aservices%253Ano.ntnu.ssowrapper%26cookieTime%3D1495838407%26RelayState%3D%252Fsso-wrapper%252Fweb%252Fwrapper%253Ftarget%253Ditslearning'
         self.courses_url = 'https://ntnu.itslearning.com/Course/AllCourses.aspx'
         self.courses = dict()
@@ -52,6 +56,10 @@ class MainWindow(Tk):
         self.wait_for_confirm()
 
     def run(self):
+        # get the keywords for lectures or assignments
+        key_words = []
+        if self.download_assignments.get():
+            key_words.extend(['seminar','vinger','exercise','oppgaver','prosjekt','project'])
         def enc(txt):
             # encode a text to utf-8
             return unicode(txt).encode('latin-1')
@@ -60,14 +68,15 @@ class MainWindow(Tk):
             print 'ignored',self.listbox.get(selected_course)
         print self.ignored_courses
         # access each course through selenium
-        def check_words(root,wordlist):
-            for w in wordlist:
+        def check_words(root):
+            for w in key_words:
                 if w in root:
                     return True
             return False
         its_base = 'https://ntnu.itslearning.com/'
         base_url = its_base + 'main.aspx?CourseID='
         for course,courseName in self.courses.items():
+            files_were_added = False
             if courseName in self.ignored_courses:
                 print courseName,'is an ignored course, skipping...'
                 continue
@@ -77,10 +86,11 @@ class MainWindow(Tk):
             print 'Exploring new course'
             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
             for link in soup.find_all('a', href=True):
+                print link.text
                 if 'processfolder' in link['href']:
                     # check if this folder has the name 'oving' or 'assignment'
                     assignment_name = link.text.lower()
-                    if check_words(assignment_name,['seminar','vinger','exercise','oppgaver','prosjekt','project']):
+                    if check_words(assignment_name):
                         # open folder and check sub-trees
                         assignment_link = link['href']
                         self.driver.get(assignment_link)
@@ -97,7 +107,22 @@ class MainWindow(Tk):
                                         # download the file
                                         self.driver.get(deliver_link['href'])
                                         print 'Downloading file'
+                                        files_were_added = True
 
+            print courseName
+            print courseName.split(" ",1)[0]
+            working_dir = os.path.join(self.download_path,courseName.split(" ",1)[0])
+            if files_were_added:
+                os.makedirs(working_dir)
+            # move all the files outside of the folder into working_dir
+            for filename in os.listdir(self.download_path):
+                curfile=os.path.join(self.download_path,filename)
+                if os.path.isfile(curfile):
+                    print 'moving file!!! >',filename
+                    shutil.move(curfile, working_dir)
+
+                else:
+                    continue
             time.sleep(1)
 
     def fetch_courses(self):
@@ -110,7 +135,17 @@ class MainWindow(Tk):
         print _os+' detected. Chromedriver path: '+self.chrome_driver+'\n'
         print 'Assuming your credentials are correct. Firing up chrome...'
         print '(All your files will be stored in your default download folder)'
-        self.driver = webdriver.Chrome(self.dir_path + self.chrome_driver)
+        print 'Setting options in chrome'
+        options = webdriver.ChromeOptions()
+        options.add_experimental_option(
+            "prefs",{
+                "download.default_directory": self.download_path,
+                "download.prompt_for_download":False,
+                "download.directory_upgrade":True,
+                "safebrowsing.enabled":True
+            }
+        )
+        self.driver = webdriver.Chrome(chrome_options = options, executable_path = self.dir_path + self.chrome_driver)
         self.driver.get(self.ntnu_itslearning_url)
 
         def find_and_type(id,s,enter=False):
@@ -144,7 +179,7 @@ class MainWindow(Tk):
             #print c.decode('iso-8859-1')
             print c.decode('latin-1')
             self.listbox.insert(END,c.decode('latin-1'))
-
+        self.course_label.config(text="Select courses to IGNORE")
 
     def populate_courses(self,courses):
         for c in courses:
@@ -158,17 +193,38 @@ class MainWindow(Tk):
         print self.download_lectures.get()
     def accept_input(self):
         f = self.frame
+        self.user_label = Label(f,text="User",width=20)
+        self.pw_label = Label(f,text="Password",width=20)
         self.user = Entry(f,text='',width=20)
         self.pw = Entry(f,text='',show='*',width=20)
         self.confirm = Button(f,text='Confirm login information',command=self.get_data)
         #self.lecture_notes = Checkbutton(f,text='Lecture notes',variable=BooleanVar(),command=self.clicked_lecturenotes)
 
     def init_ui(self):
-        Label(self.frame,text="User",width=20).grid(row=0,column=1)
-        Label(self.frame,text="Password",width=20).grid(row=1,column=1)
+        self.user_label.grid(row=0,column=1)
+        self.pw_label.grid(row=1,column=1)
         self.user.grid(row=0,column=2)
         self.pw.grid(row=1,column=2,pady=10)
         self.confirm.grid(row=2,column=1,columnspan=4)
+
+    def init_ui_download(self):
+        self.course_label = Label(self.frame,text="Select a download folder and then click 'Load courses'")
+        self.course_label.grid(row=3,column=1,columnspan=3,sticky=W,pady=(15,5))
+
+        self.listbox = Listbox(self.frame,selectmode=MULTIPLE,width=25,height=20)
+        self.listbox.grid(row=4,column=1,columnspan=2,rowspan=20,sticky=W)
+
+        self.btn_load = Button(self.frame,text='Load courses', command=self.fetch_courses).grid(row=4,column=3)
+
+        self.btn_a = Checkbutton(self.frame,text='Assignments',command=self.clicked_assignments,variable=self.download_assignments,onvalue=1,offvalue=0)
+        self.btn_a.grid(row=5,column=3)
+
+        self.btn_l = Checkbutton(self.frame,text='Lecture notes',command=self.clicked_lecturenotes,variable=self.download_lectures,onvalue=1,offvalue=0)
+        self.btn_l.grid(row=6,column=3)
+
+        self.start = Button(self.frame,text='Download',command=self.run)
+        self.start.grid(row=19,column=3)
+
 
     def wait_for_confirm(self):
         self.main.mainloop()
@@ -179,6 +235,8 @@ class MainWindow(Tk):
         if len(newdir)>0:
             print 'Selected',newdir
             self.download_path = newdir
+            # self.confirm.grid_forget()
+            # Label(self.frame,text="Downloading to "+newdir).grid(row=1,column=1,columnspan=4)
         else:
             print 'error, try again.'
 
@@ -189,30 +247,21 @@ class MainWindow(Tk):
             # Try again alert
             print 'Invalid login information'
             return
-        Label(self.frame,text="Select to IGNORE courses").grid(row=3,column=1,sticky=W,pady=(20,5))
-
-        scrollbar = Scrollbar(self.frame, orient=VERTICAL)
-        scrollbar.grid(row=4,column=1,sticky=N)
-        self.listbox = Listbox(self.frame,selectmode=MULTIPLE,width=20,height=20,yscrollcommand=scrollbar.set)
-        self.listbox.grid(row=4,column=1,columnspan=2,rowspan=20,sticky=W)
-
-
-        self.btn_load = Button(self.frame,text='Load courses', command=self.fetch_courses).grid(row=4,column=2)
-
-        self.btn_a = Checkbutton(self.frame,text='Assignments',command=self.clicked_assignments,variable=self.download_assignments,onvalue=1,offvalue=0)
-        self.btn_a.grid(row=5,column=2)
-
-        self.btn_l = Checkbutton(self.frame,text='Lecture notes',command=self.clicked_lecturenotes,variable=self.download_lectures,onvalue=1,offvalue=0)
-        self.btn_l.grid(row=6,column=2)
-
-        Button(self.frame,text='Select folder',command=self.select_folder).grid(row=7,column=2)
-
-        self.start = Button(self.frame,text='Download',command=self.run)
-        self.start.grid(row=9,column=2)
-        self.user.config(state='disabled')
-        self.pw.config(state='disabled')
-        self.confirm.config(state='disabled',text='Logged in')
         print 'Pressed login'
         self.logged_in = True
+        self.user.grid_forget()
+        self.user_label.grid_forget()
+        self.pw_label.grid_forget()
+        self.pw.grid_forget()
+        self.confirm.config(text='Select download folder',command=self.select_folder)
+        self.init_ui_download()
+
+
+        # show a button to choose download directory
+        # choose_dir = Button(self.frame,text='Select folder',command=self.select_folder)
+        # choose_dir.grid(row=3,column=1,sticky=S)
+
+
+
 
 MW = MainWindow()

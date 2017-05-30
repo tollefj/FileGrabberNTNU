@@ -6,6 +6,7 @@ from bs4 import BeautifulSoup
 import os,sys,time,platform
 import codecs
 import warnings  # supressing warnings from BeautifulSoup
+import shutil
 warnings.filterwarnings("ignore")
 
 def main():
@@ -19,16 +20,25 @@ def main():
     print _os+' detected. Chromedriver path: '+chrome_driver+'\n'
     print 'Enter your Feide credentials.'
     time.sleep(0.5)
-    user_name, user_pw = None, None
-    while user_name is None or user_pw is None:
-        user_name = raw_input('User: ')
-        user_pw = raw_input('Password: ')
+    user_name, user_pw = "tollefej", "Tollef1337"
 
     print 'Assuming your credentials are correct. Firing up chrome...'
     print '(All your files will be stored in your default download folder)'
     time.sleep(0.3)
     dir_path = os.getcwd()
-    driver = webdriver.Chrome(dir_path + chrome_driver)
+    #driver = webdriver.Chrome(dir_path + chrome_driver)
+    print 'Setting options'
+    options = webdriver.ChromeOptions()
+    options.add_experimental_option(
+        "prefs",{
+            "download.default_directory": r"/Users/tollef/Desktop/Test_Downloads",
+            "download.prompt_for_download":False,
+            "download.diractory_upgrade":True,
+            "safebrowsing.enabled":True
+        }
+    )
+    driver = webdriver.Chrome(chrome_options = options,executable_path = dir_path + chrome_driver)
+
     ntnu_itslearning_url = 'https://idp.feide.no/simplesaml/module.php/feide/login.php?asLen=252&AuthState=_9118f881ab74e45cbc23c0cb702b667ae2d11c4019%3Ahttps%3A%2F%2Fidp.feide.no%2Fsimplesaml%2Fsaml2%2Fidp%2FSSOService.php%3Fspentityid%3Durn%253Amace%253Afeide.no%253Aservices%253Ano.ntnu.ssowrapper%26cookieTime%3D1495838407%26RelayState%3D%252Fsso-wrapper%252Fweb%252Fwrapper%253Ftarget%253Ditslearning'
     driver.get(ntnu_itslearning_url)
 
@@ -46,9 +56,7 @@ def main():
     # list all courses
     all_courses.select_by_value('All')  # All, Active, Archived
     soup = BeautifulSoup(driver.page_source)
-    # course_list=[]
-    courses = dict()
-    ignored_courses = [] # save ignored courses for conditional checks
+    course_list=[]
 
     def enc(txt):
         # encode a text to utf-8
@@ -58,13 +66,11 @@ def main():
         if 'CourseID' in link['href']:
             _course_id = enc(link['href'].split('=')[1])
             _course_name = enc(link.text)
-            courses[_course_id] = _course_name
+            course_list.append(_course_id)
 
-    for c in courses.values():
-        #print c.decode('iso-8859-1')
-        print c.decode('latin-1')
 
     # access each course through selenium
+    dir_path="/Users/tollef/Desktop/Test_Downloads"
     def check_words(root,wordlist):
         for w in wordlist:
             if w in root:
@@ -75,6 +81,8 @@ def main():
     for course in course_list:
         driver.get(base_url + course)
         # locate the assignments
+
+        files_were_added = False
         time.sleep(1)
         print 'Exploring new course'
         soup = BeautifulSoup(driver.page_source, 'html.parser')
@@ -99,6 +107,19 @@ def main():
                                     # download the file
                                     driver.get(deliver_link['href'])
                                     print 'Downloading file'
+                                    files_were_added = True
+        working_dir = os.path.join(dir_path,course)
+        if files_were_added:
+            os.makedirs(working_dir)
+        # move all the files outside of the folder into working_dir
+        for filename in os.listdir(dir_path):
+            curfile=os.path.join(dir_path,filename)
+            if os.path.isfile(curfile):
+                print 'moving file!!! >',filename
+                shutil.move(curfile, working_dir)
+
+            else:
+                continue
 
         time.sleep(1)
 main()

@@ -1,5 +1,6 @@
 from Tkinter import *
 from ttk import *
+import tkFileDialog
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
@@ -33,7 +34,7 @@ class MainWindow(Tk):
 
         self.download_lectures = BooleanVar()
         self.download_assignments = BooleanVar()
-        self.download_lectures.set(1)
+        self.download_assignments.set(1)
 
         # main program variables
         self.start = None # the button to start the program
@@ -42,14 +43,22 @@ class MainWindow(Tk):
         self.dir_path = os.getcwd()
         self.ntnu_itslearning_url = 'https://idp.feide.no/simplesaml/module.php/feide/login.php?asLen=252&AuthState=_9118f881ab74e45cbc23c0cb702b667ae2d11c4019%3Ahttps%3A%2F%2Fidp.feide.no%2Fsimplesaml%2Fsaml2%2Fidp%2FSSOService.php%3Fspentityid%3Durn%253Amace%253Afeide.no%253Aservices%253Ano.ntnu.ssowrapper%26cookieTime%3D1495838407%26RelayState%3D%252Fsso-wrapper%252Fweb%252Fwrapper%253Ftarget%253Ditslearning'
         self.courses_url = 'https://ntnu.itslearning.com/Course/AllCourses.aspx'
+        self.courses = dict()
+        self.ignored_courses = [] # save ignored self.courses for conditional checks
+        self.download_path = None
 
         self.accept_input()
         self.init_ui()
         self.wait_for_confirm()
 
     def run(self):
-        print '>>>Main program running!'
-
+        def enc(txt):
+            # encode a text to utf-8
+            return unicode(txt).encode('latin-1')
+        for selected_course in self.listbox.curselection():
+            self.ignored_courses.append(enc(self.listbox.get(selected_course)))
+            print 'ignored',self.listbox.get(selected_course)
+        print self.ignored_courses
         # access each course through selenium
         def check_words(root,wordlist):
             for w in wordlist:
@@ -58,7 +67,10 @@ class MainWindow(Tk):
             return False
         its_base = 'https://ntnu.itslearning.com/'
         base_url = its_base + 'main.aspx?CourseID='
-        for course in course_list:
+        for course,courseName in self.courses.items():
+            if courseName in self.ignored_courses:
+                print courseName,'is an ignored course, skipping...'
+                continue
             self.driver.get(base_url + course)
             # locate the assignments
             time.sleep(1)
@@ -118,9 +130,6 @@ class MainWindow(Tk):
         all_courses.select_by_value('All')  # All, Active, Archived
         soup = BeautifulSoup(self.driver.page_source)
         # course_list=[]
-        courses = dict()
-        ignored_courses = [] # save ignored courses for conditional checks
-
         def enc(txt):
             # encode a text to utf-8
             return unicode(txt).encode('latin-1')
@@ -129,32 +138,17 @@ class MainWindow(Tk):
             if 'CourseID' in link['href']:
                 _course_id = enc(link['href'].split('=')[1])
                 _course_name = enc(link.text)
-                courses[_course_id] = _course_name
+                self.courses[_course_id] = _course_name
 
-        for c in courses.values():
+        for c in self.courses.values():
             #print c.decode('iso-8859-1')
             print c.decode('latin-1')
             self.listbox.insert(END,c.decode('latin-1'))
-
-        self.btn_load.config(state='disabled')
-        self.btn_a.config(state='enabled')
-        self.btn_l.config(state='enabled')
-        self.start.config(state='enabled')
 
 
     def populate_courses(self,courses):
         for c in courses:
             self.listbox.insert(c)
-
-    def ignored_subjects(self):
-        ignored = list()
-        selected = self.listbox.curselection()
-        for s in selected:
-            ignored.append(self.listbox.get(s))
-        print 'ignored following courses...'
-        for i in ignored:
-            print i
-
 
     def clicked_assignments(self):
         print self.download_assignments.get()
@@ -179,6 +173,15 @@ class MainWindow(Tk):
     def wait_for_confirm(self):
         self.main.mainloop()
 
+    def select_folder(self):
+        currdir = os.getcwd()
+        newdir = tkFileDialog.askdirectory(parent=self.main,initialdir=currdir,title='Select a download folder')
+        if len(newdir)>0:
+            print 'Selected',newdir
+            self.download_path = newdir
+        else:
+            print 'error, try again.'
+
     def get_data(self):
         self.register_user = self.user.get()
         self.register_pw = self.pw.get()
@@ -198,16 +201,14 @@ class MainWindow(Tk):
 
         self.btn_a = Checkbutton(self.frame,text='Assignments',command=self.clicked_assignments,variable=self.download_assignments,onvalue=1,offvalue=0)
         self.btn_a.grid(row=5,column=2)
-        self.btn_a.config(state='disabled')
 
         self.btn_l = Checkbutton(self.frame,text='Lecture notes',command=self.clicked_lecturenotes,variable=self.download_lectures,onvalue=1,offvalue=0)
         self.btn_l.grid(row=6,column=2)
-        self.btn_l.config(state='disabled')
+
+        Button(self.frame,text='Select folder',command=self.select_folder).grid(row=7,column=2)
 
         self.start = Button(self.frame,text='Download',command=self.run)
-        self.start.grid(row=8,column=2)
-        self.start.config(state='disabled')
-
+        self.start.grid(row=9,column=2)
         self.user.config(state='disabled')
         self.pw.config(state='disabled')
         self.confirm.config(state='disabled',text='Logged in')

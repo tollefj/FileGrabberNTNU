@@ -7,15 +7,14 @@ import os,sys,time,platform
 import warnings  # supressing warnings from BeautifulSoup
 warnings.filterwarnings("ignore")
 
-chrome_driver = '/chromedriver'
-def check_OS():
-    _os = platform.system()
-    if str(_os).lower() == 'Windows':
-        chrome_driver += '.exe'
-    print _os+' detected. Chromedriver path: '+chrome_driver
-
-
 def main():
+    chrome_driver = '/chromedriver'
+    _os = platform.system()
+    if _os.lower() == 'Windows':
+        chrome_driver += '.exe'
+    elif _os.lower() == 'Linux':
+        chrome_driver += 'Linux'
+    print _os+' detected. Chromedriver path: '+chrome_driver+'\n'
     print 'Enter your Feide credentials.'
     time.sleep(0.5)
     user_name, user_pw = None, None

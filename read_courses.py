@@ -47,7 +47,6 @@ def main():
     print 'Hi there. Plz trust me and enter your Feide credentials.'
     time.sleep(0.5)
     user_name, user_pw = get_text('User','Password')
-
     print 'Assuming your credentials are correct. Firing up chrome...'
     print '(All your files will be stored in your default download folder)'
     time.sleep(0.3)
@@ -72,8 +71,6 @@ def main():
     all_courses = Select(driver.find_element_by_tag_name('select'))
     # list all courses by the student
     all_courses.select_by_value('All')
-
-    x = driver.find_elements_by_partial_link_text('/main.aspx?CourseID')
     html = driver.page_source
     soup = BeautifulSoup(html)
     # print soup.findAll('a', href=re.compile('^/main.aspx?CourseID='))
@@ -120,5 +117,4 @@ def main():
                                     # download this file
                                     driver.get(deliver_link['href'])
                                     print 'Downloading file'
-
         time.sleep(1)

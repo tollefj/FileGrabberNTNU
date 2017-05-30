@@ -1,19 +1,21 @@
-# -*- coding: latin-1 -*-
+# -*- coding: utf-8 -*-
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 from bs4 import BeautifulSoup
 import os,sys,time,platform
+import codecs
 import warnings  # supressing warnings from BeautifulSoup
 warnings.filterwarnings("ignore")
 
 def main():
-    chrome_driver = '/chromedriver'
+    chrome_driver = os.path.join('/driver','chromedriver')
+    print chrome_driver
     _os = platform.system()
     if _os.lower() == 'windows':
-        chrome_driver += '.exe'
+        chrome_driver = os.path.join('driver','chromedriver.exe')
     elif _os.lower() == 'linux':
-        chrome_driver += 'Linux'
+        chrome_driver = os.path.join('driver','chromedriverLinux')
     print _os+' detected. Chromedriver path: '+chrome_driver+'\n'
     print 'Enter your Feide credentials.'
     time.sleep(0.5)
@@ -36,7 +38,6 @@ def main():
         tmp.send_keys(s)
         if enter:
             tmp.send_keys(Keys.ENTER)
-
     find_and_type('username',user_name)
     find_and_type('password',user_pw,True)
     courses_url = 'https://ntnu.itslearning.com/Course/AllCourses.aspx'
@@ -45,10 +46,23 @@ def main():
     # list all courses
     all_courses.select_by_value('All')  # All, Active, Archived
     soup = BeautifulSoup(driver.page_source)
-    course_list=[]
+    # course_list=[]
+    courses = dict()
+    ignored_courses = [] # save ignored courses for conditional checks
+
+    def enc(txt):
+        # encode a text to utf-8
+        return unicode(txt).encode('latin-1')
+
     for link in soup.find_all('a', href=True):
         if 'CourseID' in link['href']:
-            course_list.append(link['href'].split('=')[1].encode('utf-8'))
+            _course_id = enc(link['href'].split('=')[1])
+            _course_name = enc(link.text)
+            courses[_course_id] = _course_name
+
+    for c in courses.values():
+        #print c.decode('iso-8859-1')
+        print c.decode('latin-1')
 
     # access each course through selenium
     def check_words(root,wordlist):

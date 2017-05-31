@@ -57,9 +57,12 @@ class MainWindow(Tk):
 
     def run(self):
         # get the keywords for lectures or assignments
-        key_words = []
+        assignment_words = []
         if self.download_assignments.get():
-            key_words.extend(['seminar','vinger','exercise','oppgaver','prosjekt','project'])
+            assignment_words.extend(['seminar','vinger','exercise','oppgaver','prosjekt','project'])
+        lecture_words = []
+        if self.download_lectures.get():
+            lecture_words.extend(['forelesning','litteratur','foil','lecture','pensum','slides','curriculum'])
         def enc(txt):
             # encode a text to utf-8
             return unicode(txt).encode('latin-1')
@@ -68,62 +71,122 @@ class MainWindow(Tk):
             print 'ignored',self.listbox.get(selected_course)
         print self.ignored_courses
         # access each course through selenium
-        def check_words(root):
-            for w in key_words:
+        def verify_assignment(root):
+            for w in assignment_words:
+                if w in root:
+                    return True
+            return False
+        def verify_lecture(root):
+            for w in lecture_words:
                 if w in root:
                     return True
             return False
         its_base = 'https://ntnu.itslearning.com/'
         base_url = its_base + 'main.aspx?CourseID='
         for course,courseName in self.courses.items():
-            files_were_added = False
             if courseName in self.ignored_courses:
                 print courseName,'is an ignored course, skipping...'
                 continue
+            # create a folder - delete it later if no files were added
+            working_dir = os.path.join(self.download_path,courseName.split(" ",1)[0])
+            if not os.path.isdir(working_dir):
+                os.makedirs(working_dir)
+            lecture_folder = os.path.join(working_dir,'Lectures')
+            if not os.path.isdir(lecture_folder):
+                os.makedirs(lecture_folder)
+            assignments_were_added = False
+            lectures_were_added = False
+            time.sleep(1)
             self.driver.get(base_url + course)
             # locate the assignments
-            time.sleep(1)
             print 'Exploring new course'
             soup = BeautifulSoup(self.driver.page_source, 'html.parser')
             for link in soup.find_all('a', href=True):
-                print link.text
+                # check if the found link is a folder containing files
                 if 'processfolder' in link['href']:
-                    # check if this folder has the name 'oving' or 'assignment'
-                    assignment_name = link.text.lower()
-                    if check_words(assignment_name):
+                    current_folder = link.text.lower()
+                    # check for allowed names
+                    if verify_assignment(current_folder):
                         # open folder and check sub-trees
-                        assignment_link = link['href']
-                        self.driver.get(assignment_link)
-                        print 'Accessing assignment folder',assignment_link
+                        self.driver.get(link['href'])
+                        print 'Accessing ASSIGNMENT'
+                        subsoup = BeautifulSoup(self.driver.page_source,'html.parser')
+                        for subfile in subsoup.find_all('a', class_='GridTitle'):
+                            sub_name = str(enc(subfile['title'])).title()
+                            self.driver.get(its_base+subfile['href'])
+                            file_soup = BeautifulSoup(self.driver.page_source, 'html.parser')
+                            print 'Opening subtree'
+                            delivered = file_soup.find_all('div', class_='ccl-filelist')
+                            # iterate delivered files and find their links
+                            assignments_were_added = False
+                            for x in delivered:
+                                for deliver_link in x.find_all('a',href=True):
+                                    if 'DownloadRedirect' in deliver_link['href'] and 'EssayAnswerID=0' not in deliver_link['href']:
+                                        # download the file
+                                        self.driver.get(deliver_link['href'])
+                                        print 'Downloading file'
+                                        assignments_were_added = True
+                                time.sleep(0.5)
+                            # create a folder for each assignment
+                            if assignments_were_added:
+                                assignment_folder = os.path.join(working_dir,sub_name)
+                                os.makedirs(assignment_folder)
+                                for filename in os.listdir(self.download_path):
+                                    curfile=os.path.join(self.download_path,filename)
+                                    if os.path.isfile(curfile) and '.DS' not in filename:
+                                        shutil.move(curfile,assignment_folder)
+                                assignments_were_added=True
+                    if verify_lecture(current_folder):
+                        self.driver.get(link['href'])
+                        print 'Accessing LECTURE'
                         subsoup = BeautifulSoup(self.driver.page_source,'html.parser')
                         for subfile in subsoup.find_all('a', class_='GridTitle'):
                             self.driver.get(its_base+subfile['href'])
                             file_soup = BeautifulSoup(self.driver.page_source, 'html.parser')
-                            delivered = file_soup.find_all('div', class_='ccl-filelist')
-                            # iterate delivered files and find their links
-                            for x in delivered:
-                                for deliver_link in x.find_all('a',href=True):
-                                    if 'DownloadRedirect' in deliver_link['href']:
-                                        # download the file
-                                        self.driver.get(deliver_link['href'])
-                                        print 'Downloading file'
-                                        files_were_added = True
+                            print 'Opening lecture subtree'
+                            lecture_dl = file_soup.find_all('a',href=True)
+                            lectures_were_added
+                            for l in lecture_dl:
+                                if '/file/download' in l['href']:
+                                    '''
+                                    from ../file/download
+                                    to ntnu.itslearning.com/file
+                                    '''
+                                    modified_url = its_base + l['href'][3:]
+                                    self.driver.get(modified_url)
+                                    print 'Downloading lecture'
+                                    lectures_were_added = True
+                            time.sleep(0.5)
+                            if lectures_were_added:
+                                for filename in os.listdir(self.download_path):
+                                    curfile=os.path.join(self.download_path,filename)
+                                    if os.path.isfile(curfile) and '.DS' not in filename:
+                                        shutil.move(curfile,lecture_folder)
 
-            print courseName
-            print courseName.split(" ",1)[0]
-            working_dir = os.path.join(self.download_path,courseName.split(" ",1)[0])
-            if files_were_added:
-                os.makedirs(working_dir)
+
+
             # move all the files outside of the folder into working_dir
-            for filename in os.listdir(self.download_path):
-                curfile=os.path.join(self.download_path,filename)
-                if os.path.isfile(curfile):
-                    print 'moving file!!! >',filename
-                    shutil.move(curfile, working_dir)
+            if not assignments_were_added and not lectures_were_added:
+                print 'Did not find any files for course '+courseName+', deleting folder'
+                # os.rmdir(working_dir)
+                shutil.rmtree(working_dir)
+                time.sleep(0.1)
 
-                else:
-                    continue
-            time.sleep(1)
+            # if lectures_were_added:
+            #
+            # elif lectures_:
+            #     for filename in os.listdir(self.download_path):
+            #         curfile=os.path.join(self.download_path,filename)
+            #         if os.path.isfile(curfile) and '.DS' not in filename:
+            #             print 'moving file!!! >',filename
+            #             shutil.move(curfile, working_dir)
+            #             time.sleep(0.1)
+            #         else:
+            #             continue
+
+
+        self.driver.close()
+        self.driver.quit()
 
     def fetch_courses(self):
         print self.chrome_driver
@@ -142,7 +205,9 @@ class MainWindow(Tk):
                 "download.default_directory": self.download_path,
                 "download.prompt_for_download":False,
                 "download.directory_upgrade":True,
-                "safebrowsing.enabled":True
+                "safebrowsing.enabled":True,
+                "plugins.always_open_pdf_externally": True,
+                "download.target":"_blank"
             }
         )
         self.driver = webdriver.Chrome(chrome_options = options, executable_path = self.dir_path + self.chrome_driver)
@@ -155,7 +220,6 @@ class MainWindow(Tk):
             if enter:
                 tmp.send_keys(Keys.ENTER)
 
-        print 'typing in',self.register_user,'and',self.register_pw
         find_and_type('username',self.register_user)
         find_and_type('password',self.register_pw,True)
 

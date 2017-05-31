@@ -141,6 +141,9 @@ class MainWindow(Tk):
                         print 'Accessing LECTURE'
                         subsoup = BeautifulSoup(self.driver.page_source,'html.parser')
                         for subfile in subsoup.find_all('a', class_='GridTitle'):
+                            # check for algdat
+                            if 'animasjon' in str(enc(subfile['title'])).lower():
+                                continue
                             self.driver.get(its_base+subfile['href'])
                             file_soup = BeautifulSoup(self.driver.page_source, 'html.parser')
                             print 'Opening lecture subtree'

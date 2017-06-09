@@ -247,6 +247,10 @@ class MainWindow(Tk):
             print c.decode('latin-1')
             self.listbox.insert(END,c.decode('latin-1'))
         self.course_label.config(text="Select courses to IGNORE")
+        self.start.config(state='enabled')
+        self.btn_a.config(state='enabled')
+        self.btn_l.config(state='enabled')
+
 
     def populate_courses(self,courses):
         for c in courses:
@@ -275,7 +279,7 @@ class MainWindow(Tk):
         self.confirm.grid(row=2,column=1,columnspan=4)
 
     def init_ui_download(self):
-        self.course_label = Label(self.frame,text="Select a download folder and then click 'Load courses'")
+        self.course_label = Label(self.frame,text="Click 'Load courses' and select what to download. Downloading lecture notes will download a huge amount of data")
         self.course_label.grid(row=3,column=1,columnspan=3,sticky=W,pady=(15,5))
 
         self.listbox = Listbox(self.frame,selectmode=MULTIPLE,width=25,height=20)
@@ -285,11 +289,14 @@ class MainWindow(Tk):
 
         self.btn_a = Checkbutton(self.frame,text='Assignments',command=self.clicked_assignments,variable=self.download_assignments,onvalue=1,offvalue=0)
         self.btn_a.grid(row=5,column=3)
+        self.btn_a.config(state='disabled')
 
         self.btn_l = Checkbutton(self.frame,text='Lecture notes',command=self.clicked_lecturenotes,variable=self.download_lectures,onvalue=1,offvalue=0)
         self.btn_l.grid(row=6,column=3)
+        self.btn_l.config(state='disabled')
 
         self.start = Button(self.frame,text='Download',command=self.run)
+        self.start.config(state='disabled')
         self.start.grid(row=19,column=3)
 
 
@@ -301,7 +308,13 @@ class MainWindow(Tk):
         newdir = tkFileDialog.askdirectory(parent=self.main,initialdir=currdir,title='Select a download folder')
         if len(newdir)>0:
             print 'Selected',newdir
+            newdir = os.path.join(newdir,'ItsLearningFiles')
+            if not os.path.isdir(newdir):
+                os.makedirs(newdir)
             self.download_path = newdir
+            self.init_ui_download()
+            self.confirm.grid_forget()
+
             # self.confirm.grid_forget()
             # Label(self.frame,text="Downloading to "+newdir).grid(row=1,column=1,columnspan=4)
         else:
@@ -321,7 +334,6 @@ class MainWindow(Tk):
         self.pw_label.grid_forget()
         self.pw.grid_forget()
         self.confirm.config(text='Select download folder',command=self.select_folder)
-        self.init_ui_download()
 
 
         # show a button to choose download directory

@@ -140,13 +140,11 @@ class MainWindow(Tk):
                 dl_lecture = verify_lecture(folder.text.lower())
                 if 'processfolder' in folder['href']:
                     self.update(folder['href'])
-                    print '> Yay, an assignment <'
                     process_soup = self.new_soup()
                     for subfile in find_on_page(process_soup,'a','GridTitle'):
                         subname = self.enc(subfile['title']).title()
                         self.update(self.its_base+subfile['href'])
                         foldersoup = self.new_soup()
-
                         if dl_assignment:
                             # find the source of uploaded files
                             delivered = find_on_page(foldersoup,'div','ccl-filelist')
@@ -164,6 +162,8 @@ class MainWindow(Tk):
                                 valid_folder = True
                                 add_file(working_dir,subname)
                         if dl_lecture:
+                            self.update(self.its_base+subfile['href'])
+                            foldersoup = self.new_soup()
                             if 'animasjon' in subname: # fix for TDT4120
                                 continue
                             lectures_were_added = False
@@ -263,8 +263,7 @@ class MainWindow(Tk):
                 self.courses[_course_id] = _course_name
 
         for c in self.courses.values():
-            #print c.decode('iso-8859-1')
-            print self.enc(c)
+            #print self.enc(c)
             self.listbox.insert(END,c.decode('latin-1'))
         self.course_label.config(text="Select courses to IGNORE")
         self.start.config(state='enabled')
@@ -307,7 +306,6 @@ class MainWindow(Tk):
 
     def init_ui_download(self):
         #self.course_label = Label(self.frame,text="Click 'Load courses' and select what to download. Downloading lecture notes will download a huge amount of data")
-
         self.listbox.grid(row=4,column=1,columnspan=2,rowspan=20,sticky=W)
         self.btn_load.grid(row=4,column=3)
         self.btn_a.grid(row=5,column=3)

@@ -11,6 +11,8 @@ import codecs
 from slugify import slugify
 import warnings  # supressing warnings from BeautifulSoup
 warnings.filterwarnings("ignore")
+reload(sys)
+sys.setdefaultencoding('utf8')
 
 class MainWindow(Tk):
     def __init__(self):
@@ -34,9 +36,6 @@ class MainWindow(Tk):
         self.btn_a = None
         self.btn_l = None
         self.btn_load = None
-        # for c in range(4):
-        #     self.main.grid_columnconfigure(c,weight=1)
-        #     self.main.grid_rowconfigure(c,weight=1)
 
         self.download_lectures = BooleanVar()
         self.download_assignments = BooleanVar()
@@ -60,18 +59,17 @@ class MainWindow(Tk):
         self.init_ui()
         self.wait_for_confirm()
 
-    def new_soup(self,url):
+    def update(self,url):
         self.driver.get(url)
+
+    def new_soup(self):
         return BeautifulSoup(self.driver.page_source)
 
     def enc(self,txt):
         # encode a text to utf-8
         #return unicode(txt).encode('latin-1')
-        return slugify(unicode(txt))
-
-    def run_tests(self):
-        x = 'øvingsopplegg før 2017'
-        print self.enc(x)
+        txt = unicode(txt.encode())
+        return slugify(txt)
 
     def run(self):
         # get the keywords for lectures or assignments
@@ -128,20 +126,26 @@ class MainWindow(Tk):
                 os.makedirs(lecture_folder)
             assignments_were_added = False
             lectures_were_added = False
+
+            valid_folder = False
             time.sleep(1)
-            update_driver(self.its_base + 'main.aspx?CourseID=' + course)
+            self.update(self.its_base + 'main.aspx?CourseID=' + course)
+
             # locate the assignments
             print 'Exploring new course'
 
-            for folder in find_on_page(self.new_soup(link['href']),'a'):
+
+            for folder in find_on_page(self.new_soup(),'a'):
                 dl_assignment = verify_assignment(folder.text.lower())
                 dl_lecture = verify_lecture(folder.text.lower())
                 if 'processfolder' in folder['href']:
+                    self.update(folder['href'])
                     print '> Yay, an assignment <'
-                    for subfile in find_on_page(self.new_soup(link['href']),'a','GridTitle'):
+                    process_soup = self.new_soup()
+                    for subfile in find_on_page(process_soup,'a','GridTitle'):
                         subname = self.enc(subfile['title']).title()
-                        update(self.its_base+subfile['href'])
-                        foldersoup = self.new_soup(self.its_base+subfile['href'])
+                        self.update(self.its_base+subfile['href'])
+                        foldersoup = self.new_soup()
 
                         if dl_assignment:
                             # find the source of uploaded files
@@ -157,6 +161,7 @@ class MainWindow(Tk):
                                 time.sleep(0.5)
                             # update the folder tree
                             if assignments_were_added:
+                                valid_folder = True
                                 add_file(working_dir,subname)
                         if dl_lecture:
                             if 'animasjon' in subname: # fix for TDT4120
@@ -169,6 +174,7 @@ class MainWindow(Tk):
                                     lectures_were_added = True
                             time.sleep(0.5)
                             if lectures_were_added:
+                                valid_folder = True
                                 for filename in os.listdir(self.download_path):
                                     curfile=os.path.join(self.download_path,filename)
                                     if os.path.isfile(curfile) and '.DS' not in filename:
@@ -232,12 +238,22 @@ class MainWindow(Tk):
 
         find_and_type('username',self.register_user)
         find_and_type('password',self.register_pw,True)
+        time.sleep(0.5)
+        try:
+            yesbtn = self.driver.find_element_by_id('yesbutton')
+            yesbtn.click()
+        except Exception:
+            pass
+        finally:
+            time.sleep(0.5)
 
-        soup = self.new_soup(self.courses_url)
+        self.driver.get(self.courses_url)
         all_courses = Select(self.driver.find_element_by_tag_name('select'))
         # list all courses
         all_courses.select_by_value('All')  # All, Active, Archived
         # course_list=[]
+        time.sleep(1)
+        soup = self.new_soup()
 
 
         for link in soup.find_all('a', href=True):
@@ -314,10 +330,7 @@ class MainWindow(Tk):
             self.btn_load.config(state='enabled')
             self.course_label = Label(self.frame,text=self.download_path)
             self.course_label.grid(row=3,column=1,sticky=W,columnspan=3,pady=(5,5))
-            #self.confirm.grid_forget()
 
-            # self.confirm.grid_forget()
-            # Label(self.frame,text="Downloading to "+newdir).grid(row=1,column=1,columnspan=4)
         else:
             print 'error, try again.'
 
@@ -336,14 +349,5 @@ class MainWindow(Tk):
         self.user_label.grid_forget()
         self.pw_label.grid_forget()
         self.pw.grid_forget()
-
-
-
-        # show a button to choose download directory
-        # choose_dir = Button(self.frame,text='Select folder',command=self.select_folder)
-        # choose_dir.grid(row=3,column=1,sticky=S)
-
-
-
 
 MW = MainWindow()

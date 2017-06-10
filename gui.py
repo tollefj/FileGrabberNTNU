@@ -53,8 +53,6 @@ class MainWindow(Tk):
         self.ignored_courses = [] # save ignored self.courses for conditional checks
         self.download_path = None
 
-        #self.run_tests()
-
         self.accept_input()
         self.init_ui()
         self.wait_for_confirm()
@@ -66,8 +64,6 @@ class MainWindow(Tk):
         return BeautifulSoup(self.driver.page_source)
 
     def enc(self,txt):
-        # encode a text to utf-8
-        #return unicode(txt).encode('latin-1')
         txt = unicode(txt.encode())
         return slugify(txt)
 
@@ -117,7 +113,6 @@ class MainWindow(Tk):
             if self.enc(courseName) in self.ignored_courses:
                 print self.enc(courseName),'is an ignored course, skipping...'
                 continue
-            # create a folder - delete it later if no files were added
             working_dir = os.path.join(self.download_path,courseName.split(" ",1)[0])
             if not os.path.isdir(working_dir):
                 os.makedirs(working_dir)
@@ -187,19 +182,6 @@ class MainWindow(Tk):
                 # os.rmdir(working_dir)
                 shutil.rmtree(working_dir)
                 time.sleep(0.1)
-
-            # if lectures_were_added:
-            #
-            # elif lectures_:
-            #     for filename in os.listdir(self.download_path):
-            #         curfile=os.path.join(self.download_path,filename)
-            #         if os.path.isfile(curfile) and '.DS' not in filename:
-            #             print 'moving file!!! >',filename
-            #             shutil.move(curfile, working_dir)
-            #             time.sleep(0.1)
-            #         else:
-            #             continue
-
 
         self.driver.close()
         self.driver.quit()

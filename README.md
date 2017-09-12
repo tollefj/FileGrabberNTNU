@@ -1,4 +1,5 @@
-# Download data from Itslearning (NTNU)
+# ~~Download data from Itslearning (NTNU)~~
+# DEPCRECATED - Keeping this for the readme setup alone.
 *Requires Chrome.*
 ## Running locally (Python 2.7)
 [Download python here](https://www.python.org/downloads/release/python-2713/) if missing.
